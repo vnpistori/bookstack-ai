@@ -5,11 +5,9 @@ load_dotenv()
 
 
 class Settings:
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv(
-        "SUPABASE_KEY"
-    )
-    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY")
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").strip(' "\'')
+    SUPABASE_KEY: str = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY", "")).strip(' "\'')
+    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "").strip(' "\'')
 
     # AI Keys
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")

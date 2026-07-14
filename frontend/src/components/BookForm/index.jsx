@@ -16,6 +16,7 @@ import {
   DEFAULT_CLASS_CATEGORIES,
   DEFAULT_AVAILABILITY_OPTIONS,
 } from "../../utils/constants";
+import { getCoverUrl } from "../../utils/imageUtils";
 
 const ScoreStats = ({ stats, currentScore, loading }) => {
   if (loading) {
@@ -658,7 +659,7 @@ export default function BookForm({
                   {formData.cover_image ? (
                     <>
                       <img
-                        src={formData.cover_image}
+                        src={getCoverUrl(formData.cover_image)}
                         alt="Capa"
                         className="w-full h-full object-cover"
                       />
