@@ -1,49 +1,75 @@
-# Sistema de Gerenciamento de Leitura (BookStack AI)
+# BookStack AI
 
-> Um sistema completo de gerenciamento de biblioteca pessoal com classificação hierárquica, sugestões inteligentes de IA e analytics avançados. Organize sua lista de leitura, acompanhe seu progresso, defina metas anuais e exporte showcases visuais da sua estante.
+> A complete personal library management system with hierarchical classification, intelligent AI suggestions, and advanced analytics. Organize your reading list, track your progress, set annual goals, and export visual showcases of your bookshelf.
 
-![Demonstração do sistema](https://github.com/vitoriapguimaraes/bookstack-ai/blob/main/frontend/public/demo/navigation.gif)
+![System Demonstration](https://github.com/vitoriapguimaraes/bookstack-ai/blob/main/frontend/public/demo/navigation.gif)
 
-## Funcionalidades Principais
+## Key Features
 
-- **Gerenciamento Inteligente de Livros**: CRUD completo com sugestões automáticas de metadados via IA (Groq) e Google Books API.
-- **Classificação Hierárquica**: Organização robusta em 6 classes e 47 categorias para melhor segmentação do conhecimento.
-- **Showcase Exporter (Novo)**: Gere imagens compartilháveis da sua estante ("aesthetic") com contador de livros, resumo de filtros e layout otimizado para redes sociais.
-- **Analytics Avançados**: Dashboard interativo com métricas de leitura, distribuição por classes e progresso de metas.
-- **Configurações de Usuário (Novo)**: Defina e acompanhe metas anuais de leitura com persistência de preferências e filtros.
-- **Sistema de Prioridade (Score)**: Algoritmo que calcula automaticamente a prioridade de leitura baseada em múltiplos fatores.
-- **Fila de Leitura Dinâmica**: Organização automática de próximos livros baseada em status e prioridade.
+- **Intelligent Book Management**: Full CRUD with automatic metadata suggestions via AI (Groq) and Google Books API.
+- **Hierarchical Classification**: Robust organization into 6 classes and 47 categories for better knowledge segmentation.
+- **Showcase Exporter (New)**: Generate shareable images of your bookshelf ("aesthetic") with a book counter, filter summary, and layout optimized for social media.
+- **Advanced Analytics**: Interactive dashboard with reading metrics, class distribution, and goal progress.
+- **User Settings (New)**: Set and track annual reading goals with persistence of preferences and filters.
+- **Priority System (Score)**: Algorithm that automatically calculates reading priority based on multiple factors.
+- **Dynamic Reading Queue**: Automatic organization of upcoming books based on status and priority.
 
-## Tecnologias Utilizadas
+## Technologies Used
 
-- **Frontend**: React 18, Vite, Tailwind CSS, Lucide React, Axios, html2canvas.
-- **Backend**: FastAPI, SQLModel (SQLite), Groq AI SDK.
-- **Integrações**: Google Books API, Groq LLM.
+### Frontend
 
-## Como Executar
+- [![React](https://img.shields.io/badge/react-000000?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
+- [![Vite](https://img.shields.io/badge/vite-000000?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+- [![Tailwind CSS](https://img.shields.io/badge/tailwindcss-000000?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-1. Clone o repositório:
+### Backend / Data
+
+- [![FastAPI](https://img.shields.io/badge/fastapi-000000?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+- [![SQLite](https://img.shields.io/badge/sqlite-000000?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+
+### AI / External APIs
+
+- [![Google Books API](https://img.shields.io/badge/google%20books%20api-000000?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/books)
+- [![Groq LLM](https://img.shields.io/badge/groq-000000?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+- Python 3.10+
+
+### Installation
+
+1. Clone the repository:
 
    ```bash
    git clone https://github.com/vitoriapguimaraes/bookstack-ai.git
+   ```
+
+2. Navigate to the project directory:
+
+   ```bash
    cd bookstack-ai
    ```
 
-2. Configure e execute o Backend:
+### Execution
+
+#### Run backend
+
+1. Setup and run the backend:
 
    ```bash
    cd backend
    python -m venv venv
    # Windows: venv\Scripts\activate | Unix: source venv/bin/activate
    pip install -r requirements.txt
-   # Opção 1: Via Script (Recomendado)
    python main.py
-
-   # Opção 2: Via Uvicorn Direto
-   uvicorn app.main:app --reload
    ```
 
-3. Configure e execute o Frontend:
+#### Run frontend
+
+1. Setup and run the frontend:
 
    ```bash
    cd frontend
@@ -51,23 +77,21 @@
    npm run dev
    ```
 
-4. Acesse o sistema em `http://localhost:5173`.
+## How to Use
 
-## Como Usar
+1. **Add Books**: Use the AI search to automatically fill in data just by entering the title.
+2. **Export Bookshelf**: On the home screen, use the "Compartilhar Estante" (Share Bookshelf) button to generate a customized image of your current progress.
+3. **Set Goals**: Go to "Settings > Preferences" to define how many books you want to read in the year.
+4. **Analytics**: Track the distribution chart to ensure you are diversifying your readings among classes (Technology, Business, etc.).
 
-- **Adicionar Livros**: Use a busca por IA para preencher dados automaticamente apenas pelo título.
-- **Exportar Estante**: Na tela inicial, use o botão de "Compartilhar Estante" para gerar uma imagem personalizada do seu progresso atual.
-- **Definir Metas**: Acesse "Configurações > Preferências" para definir quantos livros deseja ler no ano.
-- **Analytics**: Acompanhe o gráfico de distribuição para garantir que você está diversificando suas lecturas entre as classes (Tecnologia, Negócios, etc).
+## Directory Structure
 
-## Estrutura de Diretórios
-
-```bash
+```text
 /bookstack-ai
 ├── backend/
-│   ├── main.py              # API FastAPI
-│   ├── models.py            # Modelos de Dados
-│   └── database.py          # Configuração SQLite
+│   ├── main.py              # FastAPI application
+│   ├── models.py            # Data models
+│   └── database.py          # SQLite configuration
 ├── frontend/
 │   ├── src/
 │   │   ├── components/      # UI Components (BookCard, ShowcaseExporter, etc)
@@ -78,10 +102,18 @@
 
 ## Status
 
-🚧 Em desenvolvimento
+🚧 In development
 
-> Veja as [issues abertas](https://github.com/vitoriapguimaraes/bookstack-ai/issues) para sugestões de melhorias e próximos passos.
+> See the [open issues](https://github.com/vitoriapguimaraes/bookstack-ai/issues) for suggested improvements and next steps.
 
-## Mais Sobre Mim
+## Contributing
 
-Acesse os arquivos disponíveis na [Pasta Documentos](https://github.com/vitoriapguimaraes/vitoriapguimaraes/tree/main/DOCUMENTOS) para mais informações sobre minhas qualificações e certificações.
+Contributions are always welcome! Feel free to open an issue or submit a pull request.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for more information.
+
+## About Me
+
+Learn more about my qualifications and certifications in my [Documents Folder](https://github.com/vitoriapguimaraes/vitoriapguimaraes/tree/main/DOCUMENTOS) on my main profile.
