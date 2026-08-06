@@ -619,6 +619,32 @@ def preview_score(
     return {"score": score}
 
 
+@router.post("/recalculate_scores")
+def recalculate_scores(
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Força o recalculo do score de todos os livros do usuário
+    com base nas configurações de fórmula atuais.
+    """
+    user_id = user["id"]
+    pref = session.get(UserPreference, user_id)
+    config = pref.formula_config if pref else None
+
+    books = session.exec(select(Book).where(Book.user_id == user_id)).all()
+    count = 0
+    for book in books:
+        new_score = calculate_book_score(book, config)
+        if book.score != new_score:
+            book.score = new_score
+            session.add(book)
+            count += 1
+
+    session.commit()
+    return {"message": f"Scores recalculados. {count} livros atualizados."}
+
+
 @router.post("/fix_consistency")
 def fix_order_consistency(
     session: Session = Depends(get_session),

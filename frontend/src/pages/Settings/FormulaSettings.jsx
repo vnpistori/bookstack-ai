@@ -188,7 +188,8 @@ export default function FormulaSettings() {
     try {
       const res = await api.get("/preferences/");
       await api.put("/preferences/", { ...res.data, formula_config: config });
-      addToast({ type: "success", message: "Fórmula atualizada!" });
+      await api.post("/books/recalculate_scores");
+      addToast({ type: "success", message: "Fórmula atualizada com sucesso!" });
     } catch (err) {
       addToast({ type: "error", message: "Erro ao salvar." });
     } finally {
