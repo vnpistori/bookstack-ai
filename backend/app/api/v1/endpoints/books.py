@@ -205,7 +205,7 @@ def create_book(
         api_keys, custom_prompts, class_categories = _get_ai_params(session, user_id)
 
         enrichment = get_book_details_hybrid(
-            book.title, api_keys, custom_prompts, class_categories
+            book.title, api_keys, custom_prompts, class_categories, author=book.author
         )
 
         _apply_enrichment(book, enrichment)

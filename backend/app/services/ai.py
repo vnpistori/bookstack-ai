@@ -3,6 +3,21 @@ import os
 from .scoring import CLASS_CATEGORIES
 
 
+def _parse_json_safe(content: str) -> dict:
+    """Extrai e faz parse seguro de JSON, mesmo se vier envolvido em blocos markdown."""
+    if not content:
+        raise ValueError("Resposta vazia da IA")
+    clean = content.strip()
+    if clean.startswith("```"):
+        lines = clean.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        clean = "\n".join(lines).strip()
+    return json.loads(clean)
+
+
 def get_gemini_classification(prompt, system_prompt, api_keys=None):
     try:
         import google.generativeai as genai
@@ -12,14 +27,35 @@ def get_gemini_classification(prompt, system_prompt, api_keys=None):
             return {"error": "GEMINI_API_KEY não configurada"}
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
+
+        # Modelos disponíveis em ordem de preferência
+        models_to_try = [
+            "gemini-flash-latest",
+            "gemini-3.8-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
             "gemini-1.5-flash",
-            generation_config={"response_mime_type": "application/json"},
-        )
+        ]
 
         full_prompt = f"{system_prompt}\n\nUSER PROMPT:\n{prompt}"
-        response = model.generate_content(full_prompt)
-        return json.loads(response.text)
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(
+                    model_name,
+                    generation_config={"response_mime_type": "application/json"},
+                )
+                response = model.generate_content(full_prompt)
+                if response and response.text:
+                    return _parse_json_safe(response.text)
+            except Exception as e:
+                err_msg = str(e)
+                last_error = err_msg
+                print(f"Gemini ({model_name}) falhou: {err_msg}. Tentando próximo modelo...")
+                continue
+
+        return {"error": f"Erro Gemini: {last_error or 'Nenhum modelo Gemini respondeu'}"}
     except Exception as e:
         return {"error": f"Erro Gemini: {str(e)}"}
 
@@ -33,19 +69,33 @@ def get_openai_classification(prompt, system_prompt, api_keys=None):
             return {"error": "OPENAI_API_KEY não configurada"}
 
         client = OpenAI(api_key=api_key)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt + " Responda estritamente em JSON.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-        )
-        return json.loads(response.choices[0].message.content)
+        models_to_try = ["gpt-4o-mini", "gpt-4o"]
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt + " Responda estritamente em JSON.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                )
+                content = response.choices[0].message.content
+                if content:
+                    return _parse_json_safe(content)
+            except Exception as e:
+                err_msg = str(e)
+                last_error = err_msg
+                print(f"OpenAI ({model_name}) falhou: {err_msg}. Tentando próximo modelo...")
+                continue
+
+        return {"error": f"Erro OpenAI: {last_error or 'Nenhum modelo OpenAI respondeu'}"}
     except Exception as e:
         return {"error": f"Erro OpenAI: {str(e)}"}
 
@@ -59,19 +109,40 @@ def get_groq_classification(prompt, system_prompt, api_keys=None):
         from groq import Groq
 
         client = Groq(api_key=api_key)
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt + " Responda estritamente em JSON.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-        )
-        return json.loads(response.choices[0].message.content)
+
+        models_to_try = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
+        ]
+
+        last_error = None
+        for model_name in models_to_try:
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt + " Responda estritamente em JSON.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                )
+                content = response.choices[0].message.content
+                if content:
+                    return _parse_json_safe(content)
+            except Exception as e:
+                err_msg = str(e)
+                last_error = err_msg
+                print(f"Groq ({model_name}) falhou: {err_msg}. Tentando próximo modelo...")
+                continue
+
+        return {"error": f"Erro Groq: {last_error or 'Nenhum modelo Groq respondeu'}"}
     except Exception as e:
         return {"error": f"Erro Groq: {str(e)}"}
 
