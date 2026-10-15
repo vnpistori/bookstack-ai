@@ -163,6 +163,8 @@ def update_preferences(
     ):
         formula_changed = True
         pref.formula_config = pref_data.formula_config
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(pref, "formula_config")
 
     if pref_data.class_categories is not None:
         pref.class_categories = pref_data.class_categories

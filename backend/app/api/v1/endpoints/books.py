@@ -205,7 +205,7 @@ def create_book(
         api_keys, custom_prompts, class_categories = _get_ai_params(session, user_id)
 
         enrichment = get_book_details_hybrid(
-            book.title, api_keys, custom_prompts, class_categories
+            book.title, api_keys, custom_prompts, class_categories, author=book.author
         )
 
         _apply_enrichment(book, enrichment)
@@ -617,6 +617,32 @@ def preview_score(
     score = calculate_book_score(temp_book, config)
 
     return {"score": score}
+
+
+@router.post("/recalculate_scores")
+def recalculate_scores(
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Força o recalculo do score de todos os livros do usuário
+    com base nas configurações de fórmula atuais.
+    """
+    user_id = user["id"]
+    pref = session.get(UserPreference, user_id)
+    config = pref.formula_config if pref else None
+
+    books = session.exec(select(Book).where(Book.user_id == user_id)).all()
+    count = 0
+    for book in books:
+        new_score = calculate_book_score(book, config)
+        if book.score != new_score:
+            book.score = new_score
+            session.add(book)
+            count += 1
+
+    session.commit()
+    return {"message": f"Scores recalculados. {count} livros atualizados."}
 
 
 @router.post("/fix_consistency")

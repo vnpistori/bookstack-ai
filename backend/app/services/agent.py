@@ -2,10 +2,10 @@ import os
 import json
 from typing import TypedDict, Optional
 from langgraph.graph import StateGraph, START, END
-from langchain_groq import ChatGroq
-from langchain_core.prompts import PromptTemplate
 from app.services.metadata import get_google_books_data, get_hybrid_rating, get_openlibrary_data
 from app.services.scoring import CLASS_CATEGORIES
+from app.services.ai import get_ai_classification
+
 
 class BookGraphState(TypedDict):
     title: str
@@ -27,27 +27,44 @@ class BookGraphState(TypedDict):
 
 
 def fetch_book_data(state: BookGraphState) -> dict:
-    title = state["title"]
+    title = state.get("title", "").strip()
     author = state.get("author")
+    if author:
+        author = author.strip()
 
-    google_data = get_google_books_data(title, author)
+    if not title:
+        return {"error": "Título do livro não informado."}
+
+    google_data = get_google_books_data(title, author) or {}
     openlib_data = get_openlibrary_data(title, author) or {}
-    
-    if not google_data and not openlib_data.get("year"):
-        return {"error": "Não foi possível encontrar dados para este livro."}
 
-    google_data = google_data or {}
+    # Merge metadata: prioritize Google Books, fallback to Open Library
+    resolved_author = google_data.get("author") or openlib_data.get("author") or author
+    resolved_year = google_data.get("year") or openlib_data.get("year")
+    resolved_abstract = google_data.get("description", "")
+    resolved_cover = google_data.get("cover_image") or openlib_data.get("cover_image")
+    resolved_original_title = (
+        openlib_data.get("original_title")
+        or google_data.get("subtitle")
+        or google_data.get("original_title")
+        or title
+    )
+
     return {
-        "author": google_data.get("author") or author,
-        "year": openlib_data.get("year") or google_data.get("year"),
-        "abstract": google_data.get("description", ""),
-        "cover_image": google_data.get("cover_image"),
-        "original_title": openlib_data.get("original_title") or google_data.get("subtitle", "") or google_data.get("original_title", "") or title,
+        "author": resolved_author,
+        "year": resolved_year,
+        "abstract": resolved_abstract,
+        "cover_image": resolved_cover,
+        "original_title": resolved_original_title,
     }
 
 
 def fetch_ratings(state: BookGraphState) -> dict:
-    rating_data = get_hybrid_rating(state["title"], state.get("author"))
+    rating_data = get_hybrid_rating(
+        state["title"],
+        state.get("author"),
+        state.get("original_title"),
+    )
     if rating_data:
         return {
             "google_rating": rating_data.get("average_rating"),
@@ -60,87 +77,60 @@ def impute_classification(state: BookGraphState) -> dict:
     if state.get("error"):
         return {}
 
-    groq_key = state.get("api_keys", {}).get("groq_key") or os.getenv("GROQ_API_KEY")
-    if not groq_key:
-        return {"error": "GROQ_API_KEY não configurada"}
+    title = state["title"]
+    description = state.get("abstract") or ""
+    api_keys = state.get("api_keys") or {}
+    custom_prompts = state.get("custom_prompts")
+    class_categories = state.get("class_categories")
 
-    current_mapping = state.get("class_categories") or CLASS_CATEGORIES
-    class_categories_str = "\n".join(
-        [f"- {cls}: {', '.join(cats)}" for cls, cats in current_mapping.items()]
-    )
-    valid_classes_str = "\n".join([f"   - {cls}" for cls in current_mapping.keys()])
-
-    llm = ChatGroq(
-        temperature=0.2, groq_api_key=groq_key, model_name="llama-3.3-70b-versatile"
-    ).bind(response_format={"type": "json_object"})
-
-    prompt = PromptTemplate.from_template(
-        "Você é um assistente literário especializado.\n"
-        "LIVRO A ANALISAR:\n"
-        'Título: "{title}"\n'
-        'Resumo: "{abstract}"\n\n'
-        "INSTRUÇÕES OBRIGATÓRIAS:\n"
-        "1. 'book_class': Escolha UMA das classes:\n{valid_classes}\n"
-        "2. 'category': Escolha UMA subcategoria válida para a classe selecionada:\n{class_categories}\n"
-        "3. 'type': 'Técnico' ou 'Não Técnico'\n\n"
-        "Responda APENAS um JSON válido contendo as chaves 'book_class', 'category' e 'type'."
+    ai_data = get_ai_classification(
+        title=title,
+        description=description,
+        api_keys=api_keys,
+        custom_prompts=custom_prompts,
+        class_categories=class_categories,
     )
 
-    chain = prompt | llm
-    try:
-        response = chain.invoke(
-            {
-                "title": state["title"],
-                "abstract": str(state.get("abstract", ""))[:1500],
-                "valid_classes": valid_classes_str,
-                "class_categories": class_categories_str,
-            }
-        )
-        parsed = json.loads(response.content)
-        return {
-            "book_class": parsed.get("book_class"),
-            "category": parsed.get("category"),
-            "type": parsed.get("type"),
-        }
-    except Exception as e:
-        return {"error": f"Erro de classificação IA: {str(e)}"}
+    if isinstance(ai_data, dict) and "error" in ai_data:
+        return {"error": ai_data["error"]}
+
+    if not isinstance(ai_data, dict):
+        return {"error": "Retorno inválido da IA"}
+
+    updates = {
+        "book_class": ai_data.get("book_class"),
+        "category": ai_data.get("category"),
+        "type": ai_data.get("type"),
+    }
+    if ai_data.get("motivation"):
+        updates["motivation"] = ai_data["motivation"]
+    if ai_data.get("original_title") and not state.get("original_title"):
+        updates["original_title"] = ai_data["original_title"]
+
+    return updates
 
 
 def write_motivation(state: BookGraphState) -> dict:
     if state.get("error"):
         return {}
 
-    groq_key = state.get("api_keys", {}).get("groq_key") or os.getenv("GROQ_API_KEY")
-    if not groq_key:
-        return {}
+    # If already set by impute_classification, reuse it
+    if state.get("motivation"):
+        return {"motivation": state["motivation"]}
 
-    llm = ChatGroq(
-        temperature=0.7, groq_api_key=groq_key, model_name="llama-3.1-8b-instant"
-    ).bind(response_format={"type": "json_object"})
-
-    prompt = PromptTemplate.from_template(
-        "Você é um assistente literário.\n"
-        "LIVRO A ANALISAR:\n"
-        'Título: "{title}"\n'
-        'Resumo: "{abstract}"\n\n'
-        "Escreva 2 a 3 frases diretas e específicas explicando por que ler ESTE livro. "
-        "O que ele ensina de concreto? Foque no diferencial único.\n"
-        "REGRAS VITAIS:\n"
-        "- NÃO repita o nome do livro na resposta.\n"
-        "- NÃO use aspas, nem inicie com 'Este livro...'.\n"
-        "- Escreva em prosa corrida e vá direto ao ponto e ao argumento.\n"
-        "Retorne APENAS um JSON com a chave 'motivation' contendo a sua resposta."
+    # Fallback to generating motivation if not yet present
+    ai_data = get_ai_classification(
+        title=state["title"],
+        description=state.get("abstract") or "",
+        api_keys=state.get("api_keys") or {},
+        custom_prompts=state.get("custom_prompts"),
+        class_categories=state.get("class_categories"),
     )
 
-    chain = prompt | llm
-    try:
-        response = chain.invoke(
-            {"title": state["title"], "abstract": str(state.get("abstract", ""))[:1500]}
-        )
-        parsed = json.loads(response.content)
-        return {"motivation": parsed.get("motivation")}
-    except Exception:
-        return {}
+    if isinstance(ai_data, dict) and ai_data.get("motivation"):
+        return {"motivation": ai_data["motivation"]}
+
+    return {}
 
 
 def should_continue(state: BookGraphState):
@@ -183,9 +173,6 @@ def get_book_details_langgraph(
 
     result = graph.invoke(initial_state)
 
-    if result.get("error") and not result.get("abstract"):
-        return {"error": result["error"]}
-
     ret = {
         "author": result.get("author"),
         "year": result.get("year"),
@@ -200,6 +187,9 @@ def get_book_details_langgraph(
     }
 
     if result.get("error"):
-        return {"error": result["error"], "partial_result": ret}
+        # If we have at least partial metadata (author, cover, etc.), return it as partial_result
+        if ret.get("author") or ret.get("cover_image") or ret.get("year") or result.get("abstract"):
+            return {"error": result["error"], "partial_result": ret}
+        return {"error": result["error"]}
 
     return ret

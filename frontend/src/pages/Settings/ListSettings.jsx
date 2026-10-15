@@ -58,6 +58,7 @@ function ListSettings() {
         ...res.data,
         class_categories: classCategories,
       });
+      await api.post("/books/recalculate_scores");
       addToast({ type: "success", message: "Listas atualizadas com sucesso!" });
     } catch (err) {
       addToast({ type: "error", message: "Erro ao salvar listas." });
