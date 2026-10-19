@@ -7,11 +7,11 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Check for DATABASE_URL env var (set by Supabase user)
-database_url = os.getenv("DATABASE_URL")
+# Check for DATABASE_URL or POSTGRES_URL env var (set by Supabase / Vercel integration)
+database_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
 
 if not database_url:
-    print("⚠️ AVISO: Variável de ambiente DATABASE_URL não definida!")
+    print("⚠️ AVISO: Variável de ambiente DATABASE_URL / POSTGRES_URL não definida!")
     database_url = "sqlite:///:memory:"
 else:
     # SQLAlchemy requires 'postgresql://', Supabase gives 'postgres://' sometimes
@@ -42,12 +42,12 @@ def create_db_and_tables():
 
 
 def get_session():
-    if not os.getenv("DATABASE_URL"):
+    if not (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")):
         from fastapi import HTTPException
 
         raise HTTPException(
             status_code=503,
-            detail="DATABASE_URL não configurada no servidor. Configure a variável no painel da Vercel.",
+            detail="DATABASE_URL / POSTGRES_URL não configurada no servidor. Configure a variável no painel da Vercel.",
         )
     with Session(engine) as session:
         yield session
