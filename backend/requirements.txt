@@ -12,7 +12,6 @@ cryptography
 supabase
 email-validator
 numpy
-matplotlib
 langchain
 langchain-core
 langgraph

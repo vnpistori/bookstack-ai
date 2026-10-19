@@ -14,6 +14,23 @@ def read_users_me(user: dict = Depends(get_current_user)):
     return user
 
 
+@router.delete("/me")
+@router.delete("/users/me")
+def delete_current_user(
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        _perform_user_deletion(session, user["id"])
+        session.commit()
+        return {"message": "Conta excluída com sucesso."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao excluir conta.")
+
+
 @router.post("/users/sync")
 def sync_user_profile(
     session: Session = Depends(get_session),
