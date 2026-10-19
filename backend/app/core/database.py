@@ -11,18 +11,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 database_url = os.getenv("DATABASE_URL")
 
 if not database_url:
-    raise ValueError("DATABASE_URL environment variable is not set. A connection to Supabase is required.")
+    print("⚠️ AVISO: Variável de ambiente DATABASE_URL não definida!")
+    database_url = "sqlite:///:memory:"
+else:
+    # SQLAlchemy requires 'postgresql://', Supabase gives 'postgres://' sometimes
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-# SQLAlchemy requires 'postgresql://', Supabase gives 'postgres://' sometimes
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    # Fix for Supabase Transaction Pooler: psycopg2 doesn't like "pgbouncer=true" in the DSN
+    if "pgbouncer=true" in database_url:
+        database_url = database_url.replace("?pgbouncer=true", "")
+        database_url = database_url.replace("&pgbouncer=true", "")
 
-# Fix for Supabase Transaction Pooler: psycopg2 doesn't like "pgbouncer=true" in the DSN
-if "pgbouncer=true" in database_url:
-    database_url = database_url.replace("?pgbouncer=true", "")
-    database_url = database_url.replace("&pgbouncer=true", "")
-
-print("Conectando ao Banco de Dados REMOTO (PostgreSQL/Supabase)...")
+    print("Conectando ao Banco de Dados REMOTO (PostgreSQL/Supabase)...")
 
 # Create engine
 # echo=False by default to avoid log spam, can be enabled for debugging
@@ -41,6 +42,13 @@ def create_db_and_tables():
 
 
 def get_session():
+    if not os.getenv("DATABASE_URL"):
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=503,
+            detail="DATABASE_URL não configurada no servidor. Configure a variável no painel da Vercel.",
+        )
     with Session(engine) as session:
         yield session
 

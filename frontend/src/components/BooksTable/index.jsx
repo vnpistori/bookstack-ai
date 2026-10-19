@@ -224,7 +224,7 @@ export default function BooksTable({
       isDanger: true,
       onConfirm: async () => {
         try {
-          await api.delete(`/api/books/${id}`);
+          await api.delete(`/books/${id}`);
           onDelete(id);
           addToast({ type: "success", message: "Livro deletado com sucesso!" });
         } catch (err) {
@@ -262,7 +262,7 @@ export default function BooksTable({
         try {
           // Process sequentially
           for (const id of selectedBooks) {
-            await api.delete(`/api/books/${id}`);
+            await api.delete(`/books/${id}`);
             onDelete(id); // Update parent list locally
           }
           setSelectedBooks([]);
@@ -292,7 +292,7 @@ export default function BooksTable({
 
       for (const book of booksToUpdate) {
         const updatedBook = { ...book, ...updates };
-        await api.put(`/api/books/${book.id}`, updatedBook);
+        await api.put(`/books/${book.id}`, updatedBook);
       }
 
       // Trigger a refresh from parent to get updated data
