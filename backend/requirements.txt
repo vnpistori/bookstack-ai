@@ -4,6 +4,7 @@ sqlmodel
 requests
 python-multipart
 psycopg2-binary
+psycopg[binary]>=3.1.18
 python-dotenv
 groq
 openai
