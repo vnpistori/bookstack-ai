@@ -106,24 +106,20 @@ def health_check():
         status["status"] = "error"
 
     # 2. Check Critical Env Vars (Masked)
-    critical_vars = [
-        "DATABASE_URL",
-        "SUPABASE_URL",
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "ENCRYPTION_KEY",
+    critical_checks = [
+        ("DATABASE_URL", os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")),
+        ("SUPABASE_URL", os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")),
+        ("SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY")),
+        ("ENCRYPTION_KEY", os.getenv("ENCRYPTION_KEY")),
     ]
 
-    for var in critical_vars:
-        val = os.getenv(var)
+    for name, val in critical_checks:
         if val:
-            # Show first 4 chars + length for verification
             masked = f"{val[:4]}...({len(val)} chars)"
         else:
             masked = "MISSING"
-            if (
-                var != "ENCRYPTION_KEY"
-            ):  # Optional depending on setup? No, DB is critical.
+            if name != "ENCRYPTION_KEY":
                 status["status"] = "error"
-        status["env_vars"][var] = masked
+        status["env_vars"][name] = masked
 
     return status
