@@ -108,8 +108,14 @@ def health_check():
     # 2. Check Critical Env Vars (Masked)
     critical_checks = [
         ("DATABASE_URL", os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")),
-        ("SUPABASE_URL", os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")),
-        ("SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY")),
+        (
+            "SUPABASE_URL",
+            os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL"),
+        ),
+        (
+            "SUPABASE_SERVICE_ROLE_KEY",
+            os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY"),
+        ),
         ("ENCRYPTION_KEY", os.getenv("ENCRYPTION_KEY")),
     ]
 
@@ -121,5 +127,23 @@ def health_check():
             if name != "ENCRYPTION_KEY":
                 status["status"] = "error"
         status["env_vars"][name] = masked
+
+    # 3. Check Schema Column Types
+    try:
+        from sqlalchemy import text
+
+        with engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    "SELECT table_name, column_name, data_type "
+                    "FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name IN ('profiles', 'user_preferences', 'book') "
+                    "AND column_name IN ('id', 'user_id');"
+                )
+            ).fetchall()
+            if result:
+                status["columns"] = {f"{row[0]}.{row[1]}": row[2] for row in result}
+    except Exception:
+        pass
 
     return status

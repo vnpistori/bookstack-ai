@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from sqlmodel import Field, SQLModel, JSON
+from sqlalchemy import Uuid
 from datetime import datetime
 
 
@@ -58,7 +59,7 @@ class UserPreferenceUpdate(SQLModel):
 class Profile(SQLModel, table=True):
     __tablename__ = "profiles"
 
-    id: str = Field(primary_key=True)
+    id: str = Field(sa_type=Uuid(as_uuid=False), primary_key=True)
     email: str
     role: str = Field(default="user")
     is_active: bool = Field(default=True)
