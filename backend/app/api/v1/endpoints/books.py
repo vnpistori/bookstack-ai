@@ -694,7 +694,11 @@ def get_recommendations(
     """
     from app.services.recommendation import get_recommendations as _knn_recommend
 
-    user_id = current_user.id if hasattr(current_user, "id") else str(current_user)
+    user_id = (
+        current_user.get("id")
+        if isinstance(current_user, dict)
+        else getattr(current_user, "id", str(current_user))
+    )
 
     all_books = session.exec(select(Book).where(Book.user_id == user_id)).all()
 
@@ -702,7 +706,9 @@ def get_recommendations(
 
     try:
         results = _knn_recommend(books_dicts, top_n=top_n, min_rating=min_rating)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError:
+        # scikit-learn não instalado no ambiente (ex: serverless Vercel)
+        # Retorna lista vazia para o frontend usar o algoritmo fallback em JS sem erro 503
+        return []
 
     return results
