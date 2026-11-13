@@ -23,6 +23,7 @@ app.add_middleware(
         "https://bookstack-ai.vercel.app",
         "https://bookstack-ai-api.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,17 +41,6 @@ if UPLOAD_DIR.exists():
 
 # Include Routers
 app.include_router(api_router)
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc: Exception):
-    import traceback
-    traceback.print_exc()
-    from fastapi.responses import JSONResponse
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc), "error_type": type(exc).__name__},
-    )
 
 
 @app.on_event("startup")
