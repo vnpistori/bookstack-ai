@@ -42,6 +42,17 @@ if UPLOAD_DIR.exists():
 app.include_router(api_router)
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "error_type": type(exc).__name__},
+    )
+
+
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
