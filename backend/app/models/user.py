@@ -7,7 +7,7 @@ from datetime import datetime
 class UserPreference(SQLModel, table=True):
     __tablename__ = "user_preferences"
 
-    user_id: str = Field(primary_key=True)
+    user_id: str = Field(sa_type=Uuid(as_uuid=False), primary_key=True)
     openai_key: Optional[str] = None
     gemini_key: Optional[str] = None
     groq_key: Optional[str] = None
