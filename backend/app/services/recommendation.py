@@ -24,7 +24,13 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
-import numpy as np
+try:
+    import numpy as np
+
+    _NUMPY_AVAILABLE = True
+except ImportError:
+    _NUMPY_AVAILABLE = False
+    np = None
 
 # sklearn é opcional — se não instalado, o endpoint retorna 503
 try:
@@ -129,6 +135,8 @@ def get_recommendations(
         raise RuntimeError(
             "scikit-learn não está instalado. Execute: pip install scikit-learn"
         )
+    if not _NUMPY_AVAILABLE:
+        raise RuntimeError("numpy não está instalado. Execute: pip install numpy")
 
     lidos_pos = [
         b

@@ -37,12 +37,20 @@ def sync_user_profile(
     user: dict = Depends(get_current_user),
 ):
     """Sincroniza o usuário do Auth (Supabase) com a tabela de Profile."""
-    profile = session.get(Profile, user["id"])
-    if not profile:
-        profile = Profile(id=user["id"], email=user["email"])
-        session.add(profile)
-        session.commit()
-    return {"status": "synced"}
+    try:
+        user_id = user.get("id") or user.get("sub")
+        user_email = user.get("email") or user.get("email", "")
+        print(f"[sync] user_id={user_id!r} email={user_email!r}")
+        profile = session.get(Profile, user_id)
+        if not profile:
+            profile = Profile(id=user_id, email=user_email)
+            session.add(profile)
+            session.commit()
+        return {"status": "synced"}
+    except Exception as e:
+        import traceback
+        print(f"[sync] ERROR: {e}\n{traceback.format_exc()}")
+        raise
 
 
 # --- Admin User Management Helpers ---

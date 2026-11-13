@@ -1,10 +1,22 @@
 import os
 import json
-from typing import TypedDict, Optional
-from langgraph.graph import StateGraph, START, END
-from app.services.metadata import get_google_books_data, get_hybrid_rating, get_openlibrary_data
+from typing import TypedDict, Optional, Any
+from app.services.metadata import (
+    get_google_books_data,
+    get_hybrid_rating,
+    get_openlibrary_data,
+)
 from app.services.scoring import CLASS_CATEGORIES
 from app.services.ai import get_ai_classification
+
+# langgraph é opcional — importado lazily para não estourar espaço em disco no Vercel
+try:
+    from langgraph.graph import StateGraph, START, END
+
+    _LANGGRAPH_AVAILABLE = True
+except ImportError:
+    _LANGGRAPH_AVAILABLE = False
+    StateGraph = START = END = None
 
 
 class BookGraphState(TypedDict):
@@ -162,6 +174,8 @@ def get_book_details_langgraph(
     custom_prompts: dict = None,
     class_categories: dict = None,
 ) -> dict:
+    if not _LANGGRAPH_AVAILABLE:
+        return {"error": "langgraph não disponível neste ambiente"}
     graph = build_graph()
     initial_state = {
         "title": title,
@@ -188,7 +202,12 @@ def get_book_details_langgraph(
 
     if result.get("error"):
         # If we have at least partial metadata (author, cover, etc.), return it as partial_result
-        if ret.get("author") or ret.get("cover_image") or ret.get("year") or result.get("abstract"):
+        if (
+            ret.get("author")
+            or ret.get("cover_image")
+            or ret.get("year")
+            or result.get("abstract")
+        ):
             return {"error": result["error"], "partial_result": ret}
         return {"error": result["error"]}
 
