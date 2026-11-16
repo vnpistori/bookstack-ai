@@ -1,5 +1,6 @@
 from typing import Optional, Any
 from sqlmodel import Field, SQLModel
+from sqlalchemy import Uuid
 from datetime import datetime
 from pydantic import BeforeValidator
 from typing import Annotated
@@ -36,6 +37,6 @@ class Book(SQLModel, table=True):
     score: Optional[float] = 0.0
     motivation: Optional[str] = None
     cover_image: Optional[str] = None
-    user_id: Optional[str] = Field(default=None, index=True)
+    user_id: Optional[str] = Field(default=None, sa_type=Uuid(as_uuid=False), index=True)
     created_at: DatetimeField = Field(default_factory=datetime.utcnow)
     updated_at: DatetimeField = Field(default_factory=datetime.utcnow)
