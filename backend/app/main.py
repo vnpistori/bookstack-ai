@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import traceback
 
 from app.api.v1.api import api_router
 from app.core.database import create_db_and_tables, sync_sequences
@@ -28,6 +30,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Garante que exceções não tratadas sejam logadas no Vercel com traceback e retornem CORS headers."""
+    error_trace = traceback.format_exc()
+    print(f"[UNHANDLED_ERROR] {request.method} {request.url.path}: {exc}\n{error_trace}")
+
+    origin = request.headers.get("origin")
+    headers = {
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+    else:
+        headers["Access-Control-Allow-Origin"] = "*"
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Erro interno no servidor: {str(exc)}"},
+        headers=headers,
+    )
 
 # Uploads
 UPLOAD_DIR = Path("uploads")

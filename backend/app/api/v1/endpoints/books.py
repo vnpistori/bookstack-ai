@@ -247,11 +247,11 @@ def update_book(
     session: Session = Depends(get_session),
     user: dict = Depends(get_current_user),
 ):
-    user_id = user["id"]
+    user_id = user.get("id") or user.get("sub")
     book = session.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
-    if book.user_id != user_id:
+    if str(book.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     # Auto-Adjust Order based on Status Change
@@ -260,14 +260,17 @@ def update_book(
     old_order = book.order
     new_order = book_data.order
 
-    # Update fields
-    book_data_dict = book_data.dict(exclude_unset=True)
-    # Ensure our logic overrides any potential mismatch in dict
+    # Update fields - use model_dump for pydantic v2, fallback to dict for v1
+    try:
+        book_data_dict = book_data.model_dump(exclude_unset=True)
+    except AttributeError:
+        book_data_dict = book_data.dict(exclude_unset=True)
+
     if book_data.order is not None:
         book_data_dict["order"] = book_data.order
 
     for key, value in book_data_dict.items():
-        if key not in ["id", "user_id", "created_at"]:  # Protect ID and ownership
+        if key not in ["id", "user_id", "created_at"]:
             setattr(book, key, value)
 
     # Re-calculate score
@@ -279,18 +282,22 @@ def update_book(
     # Reorder management
     if new_order != old_order:
         if new_order == 0:
-            # Exiting the list (e.g. to Lido) -> Collapse gap
             _reorder_delete(session, user_id, old_order)
         elif old_order == 0 or old_order is None:
-            # Entering the list (from Lido/New) -> Insert and shift down
             _reorder_insert(session, user_id, new_order)
         else:
-            # Moving within the list
             _reorder_move(session, user_id, old_order, new_order, book_id)
 
-    session.add(book)
-    session.commit()
-    session.refresh(book)
+    try:
+        session.add(book)
+        session.commit()
+        session.refresh(book)
+    except Exception as e:
+        session.rollback()
+        import traceback
+
+        print(f"[update_book] ERROR book_id={book_id}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar livro: {str(e)}")
     return book
 
 
@@ -300,11 +307,11 @@ def delete_book(
     session: Session = Depends(get_session),
     user: dict = Depends(get_current_user),
 ):
-    user_id = user["id"]
+    user_id = user.get("id") or user.get("sub")
     book = session.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
-    if book.user_id != user_id:
+    if str(book.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     deleted_order = book.order
@@ -321,14 +328,14 @@ def reorder_all_books(
     session: Session = Depends(get_session),
     user: dict = Depends(get_current_user),
 ):
-    user_id = user["id"]
+    user_id = user.get("id") or user.get("sub")
     # Verify ownership of all (basic check)
     for b in books:
-        if b.user_id != user_id:
+        if str(b.user_id) != str(user_id):
             continue  # Skip or error? Safe to skip/ignore invalid
 
         db_book = session.get(Book, b.id)
-        if db_book and db_book.user_id == user_id:
+        if db_book and str(db_book.user_id) == str(user_id):
             db_book.order = b.order
             session.add(db_book)
 
@@ -498,7 +505,8 @@ async def upload_book_cover(
     book = session.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    if book.user_id != user["id"]:
+    user_id = user.get("id") or user.get("sub")
+    if str(book.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     try:
