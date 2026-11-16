@@ -11,7 +11,7 @@ from app.services.book_enrichment import get_book_details_hybrid
 import csv
 import io
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -231,8 +231,8 @@ def create_book(
         _reorder_insert(session, user_id, book.order)
 
     # Set created/updated
-    book.created_at = datetime.utcnow()
-    book.updated_at = datetime.utcnow()
+    book.created_at = datetime.now(timezone.utc)
+    book.updated_at = datetime.now(timezone.utc)
 
     session.add(book)
     session.commit()
@@ -270,14 +270,15 @@ def update_book(
         book_data_dict["order"] = book_data.order
 
     for key, value in book_data_dict.items():
-        if key not in ["id", "user_id", "created_at"]:
+        if key not in ["id", "user_id", "created_at", "updated_at"]:
             setattr(book, key, value)
+
+    book.updated_at = datetime.now(timezone.utc)
 
     # Re-calculate score
     pref = session.get(UserPreference, user_id)
     config = pref.formula_config if pref else None
     book.score = calculate_book_score(book, config)
-    book.updated_at = datetime.utcnow()
 
     # Reorder management
     if new_order != old_order:

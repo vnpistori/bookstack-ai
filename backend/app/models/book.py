@@ -1,7 +1,7 @@
 from typing import Optional, Any
 from sqlmodel import Field, SQLModel
 from sqlalchemy import Uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BeforeValidator
 from typing import Annotated
 
@@ -38,5 +38,5 @@ class Book(SQLModel, table=True):
     motivation: Optional[str] = None
     cover_image: Optional[str] = None
     user_id: Optional[str] = Field(default=None, sa_type=Uuid(as_uuid=False), index=True)
-    created_at: DatetimeField = Field(default_factory=datetime.utcnow)
-    updated_at: DatetimeField = Field(default_factory=datetime.utcnow)
+    created_at: DatetimeField = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: DatetimeField = Field(default_factory=lambda: datetime.now(timezone.utc))
